@@ -1,14 +1,9 @@
 package main
 
 import (
-	"archive/tar"
-	"bufio"
-	"bytes"
-	"compress/gzip"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"time"
 
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	yaml "gopkg.in/yaml.v2"
@@ -41,61 +36,6 @@ func (r *Release) AddJob(newJobName string) {
 	r.Jobs = append(r.Jobs, Job{Name: newJobName})
 }
 
-func (j *Job) createArchive() ([]byte, error) {
-	var bytes []byte
-	bytes = append(bytes, 1)
-	return bytes, nil
-}
-
-func (r *Release) createArchive() ([]byte, error) {
-	buffer := bytes.NewBuffer(nil)
-
-	bw := bufio.NewWriter(buffer)
-
-	gw := gzip.NewWriter(bw)
-	defer gw.Close()
-
-	tw := tar.NewWriter(gw)
-	defer tw.Close()
-
-	for _, job := range r.Jobs {
-		jobBytes, _ := job.createArchive()
-
-		header := new(tar.Header)
-		header.Name = fmt.Sprintf("./jobs/%s.tgz", job.Name)
-		header.Size = int64(len(jobBytes))
-		header.Typeflag = tar.TypeReg
-		header.ModTime = time.Now()
-		header.Mode = 0777
-		fmt.Printf("%#v\n", header)
-
-		if err := tw.WriteHeader(header); err != nil {
-			return nil, err
-		}
-
-		n, err := tw.Write(jobBytes)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println(n)
-	}
-
-	fmt.Printf("%#v\n", tw)
-
-	fmt.Printf("%#v\n", bw)
-
-	fmt.Printf("%#v\n", buffer)
-
-	tw.Flush()
-	gw.Flush()
-	bw.Flush()
-
-	var buf []byte
-	buffer.Write(buf)
-
-	return buf, nil
-}
-
 type Deployment struct {
 	Releases []*Release
 }
@@ -122,22 +62,18 @@ type Manifest struct {
 	InstanceGroups []InstanceGroup `yaml:"instance_groups"`
 }
 
-func createReleases(manifestPath string) Deployment {
-	manifestBytes, err := ioutil.ReadFile(manifestPath) // just pass the file name
-	if err != nil {
-		fmt.Print(err)
-	}
-
+func CreateManifest(manifestBytes []byte) Manifest {
 	var manifest Manifest
 
-	err = yaml.Unmarshal(manifestBytes, &manifest)
+	err := yaml.Unmarshal(manifestBytes, &manifest)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 
-	manifestBytesAgain, err := yaml.Marshal(&manifest)
-	fmt.Printf("%s\n", string(manifestBytesAgain))
+	return manifest
+}
 
+func CreateDeployment(manifest Manifest) Deployment {
 	deployment := Deployment{}
 
 	for _, instanceGroup := range manifest.InstanceGroups {
@@ -155,7 +91,14 @@ func main() {
 
 	fmt.Printf("%v, %s\n", *verbose, *manifestPath)
 
-	deployment := createReleases(*manifestPath)
+	manifestBytes, err := ioutil.ReadFile(*manifestPath)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	manifest := CreateManifest(manifestBytes)
+
+	deployment := CreateDeployment(manifest)
 
 	for _, release := range deployment.Releases {
 		fmt.Printf("%s -> [", release.Name)
@@ -165,10 +108,5 @@ func main() {
 		fmt.Printf("]\n")
 	}
 
-	archiveBytes, err := deployment.Releases[0].createArchive()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	ioutil.WriteFile("/tmp/crazy-file.tgz", archiveBytes, 0777)
+	// ioutil.WriteFile("/tmp/crazy-file.tgz", archiveBytes, 0777)
 }
