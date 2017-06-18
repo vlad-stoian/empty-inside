@@ -2,9 +2,15 @@ language: go
 
 go:
 - 1.7.x
-- 1.8.x
-- master
+- 1.8
+- tip
 
-install: dep ensure
-script: ginkgo -r .
+before_install:
+- go get github.com/golang/dep/...
+
+install:
+- dep ensure
+
+script:
+- ginkgo -r .
 
