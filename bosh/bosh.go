@@ -135,3 +135,51 @@ func GenerateReleaseManifest(writer io.Writer, releaseManifest ReleaseManifest) 
 
 	return bytesWritten, nil
 }
+
+func GenerateReleaseArchive(writer io.Writer, jobs []string) error {
+	gw := gzip.NewWriter(writer)
+	defer gw.Close()
+
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	releaseManifestJobs := []ReleaseManifestJob{}
+
+	for _, job := range jobs {
+		jobBuffer := new(bytes.Buffer)
+		fingerprint, err := GenerateJobArchive(jobBuffer, job)
+		if err != nil {
+			return err
+		}
+
+		jobHeader := new(tar.Header)
+		jobHeader.Name = fmt.Sprintf("./jobs/%s.tgz", job)
+		jobHeader.Mode = 100644
+		jobHeader.Size = int64(jobBuffer.Len())
+
+		tw.WriteHeader(jobHeader)
+		tw.Write(jobBuffer.Bytes())
+
+		releaseManifestJob := ReleaseManifestJob{
+			Name:        job,
+			Fingerprint: fingerprint,
+			Version:     fingerprint,
+			SHA1:        fmt.Sprintf("%x", sha1.Sum(jobBuffer.Bytes())),
+		}
+
+		releaseManifestJobs = append(releaseManifestJobs, releaseManifestJob)
+	}
+
+	releaseManifestBuffer := new(bytes.Buffer)
+	releaseManifestSize, _ := GenerateReleaseManifest(releaseManifestBuffer, ReleaseManifest{})
+
+	releaseManifestHeader := new(tar.Header)
+	releaseManifestHeader.Name = "./release.MF"
+	releaseManifestHeader.Mode = 100644
+	releaseManifestHeader.Size = int64(releaseManifestSize)
+
+	tw.WriteHeader(releaseManifestHeader)
+	tw.Write(releaseManifestBuffer.Bytes())
+
+	return nil
+}

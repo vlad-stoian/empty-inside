@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -117,6 +118,62 @@ var _ = Describe("Bosh Tests", func() {
 		It("should return the correct sha1 sum", func() {
 			Expect(string(fingerprint)).To(Equal("da39a3ee5e6b4b0d3255bfef95601890afd80709"))
 		})
+	})
+
+	Describe("Generate Release Archive", func() {
+		var (
+			fileHeader        *tar.Header
+			fileContents      []byte
+			fileToBeRead      string
+			jobsToBeGenerated []string
+			err               error
+			buffer            *bytes.Buffer
+		)
+
+		BeforeEach(func() {
+			buffer = new(bytes.Buffer)
+			jobsToBeGenerated = []string{"random-job", "other-random-job"}
+		})
+
+		JustBeforeEach(func() {
+			err = GenerateReleaseArchive(buffer, jobsToBeGenerated)
+
+			Expect(err).To(BeNil())
+
+			fileHeader, fileContents = ReadFileFromArchive(fileToBeRead, buffer)
+		})
+
+		It("is a valid .tgz file", func() {
+			Expect(fileHeader).To(BeNil())
+			Expect(fileContents).To(BeNil())
+		})
+
+		Describe("./release.MF", func() {
+			BeforeEach(func() {
+				fileToBeRead = "./release.MF"
+			})
+
+			It("exists", func() {
+				Expect(fileHeader).NotTo(BeNil())
+				Expect(fileContents).NotTo(BeNil())
+			})
+		})
+
+		for _, jobGenerated := range []string{"random-job", "other-random-job"} {
+			jobPath := fmt.Sprintf("./jobs/%s.tgz", jobGenerated)
+
+			Describe(jobPath, func() {
+				BeforeEach(func() {
+					fileToBeRead = jobPath
+				})
+
+				It("exists", func() {
+					Expect(fileHeader).NotTo(BeNil())
+					Expect(fileContents).NotTo(BeNil())
+				})
+			})
+		}
+
 	})
 
 	Describe("Generate Job Archive", func() {
