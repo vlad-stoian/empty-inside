@@ -7,7 +7,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"io"
-	"strconv"
+	"time"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -41,6 +41,26 @@ type JobManifest struct {
 	Packages   []string                    `yaml:"packages,omitempty"`
 	Templates  map[string]string           `yaml:"templates,omitempty"`
 	Properties map[interface{}]interface{} `yaml:"properties,omitempty"`
+}
+
+func GenerateTarHeader(name string, size int, isDir bool) *tar.Header {
+	header := new(tar.Header)
+
+	header.Name = name
+	header.Size = int64(size)
+	header.Gname = "root"
+	header.Uname = "root"
+	header.ModTime = time.Now()
+
+	if isDir {
+		header.Mode = 0755
+		header.Typeflag = tar.TypeDir
+	} else {
+		header.Mode = 0644
+		header.Typeflag = tar.TypeReg
+	}
+
+	return header
 }
 
 func GenerateJobManifest(writer io.Writer, name string) (int, string, error) {
@@ -86,31 +106,19 @@ func GenerateJobArchive(writer io.Writer, name string) (string, error) {
 
 	buffer.Reset()
 	monitSize, monitFingerprint, _ := GenerateMonitFile(&buffer)
-
-	monitHeader := new(tar.Header)
-	monitHeader.Name = "./monit"
-	monitHeader.Mode = 100644
-	monitHeader.Size = int64(monitSize)
+	monitHeader := GenerateTarHeader("./monit", monitSize, false)
 
 	tw.WriteHeader(monitHeader)
 	tw.Write(buffer.Bytes())
-	fingerprint.WriteString("monit")
-	fingerprint.WriteString(monitFingerprint)
-	fingerprint.WriteString(strconv.FormatInt(monitHeader.Mode, 10))
+	fingerprint.WriteString(fmt.Sprintf("monit%s100644", monitFingerprint))
 
 	buffer.Reset()
 	jobManifestSize, jobManifestFingerprint, _ := GenerateJobManifest(&buffer, name)
-
-	jobManifestHeader := new(tar.Header)
-	jobManifestHeader.Name = "./job.MF"
-	jobManifestHeader.Mode = 100644
-	jobManifestHeader.Size = int64(jobManifestSize)
+	jobManifestHeader := GenerateTarHeader("./job.MF", jobManifestSize, false)
 
 	tw.WriteHeader(jobManifestHeader)
 	tw.Write(buffer.Bytes())
-	fingerprint.WriteString("spec") // job.MF is still named spec when the fingerprint is computed
-	fingerprint.WriteString(jobManifestFingerprint)
-	fingerprint.WriteString(strconv.FormatInt(jobManifestHeader.Mode, 10))
+	fingerprint.WriteString(fmt.Sprintf("spec%s100644", jobManifestFingerprint)) // job.MF is still named spec when the fingerprint is computed
 
 	sha1sum := fmt.Sprintf("%x", sha1.Sum(fingerprint.Bytes()))
 	return sha1sum, nil
@@ -136,7 +144,7 @@ func GenerateReleaseManifest(writer io.Writer, releaseManifest ReleaseManifest) 
 	return bytesWritten, nil
 }
 
-func GenerateReleaseArchive(writer io.Writer, jobs []string) error {
+func GenerateReleaseArchive(writer io.Writer, name string, jobs []string) error {
 	gw := gzip.NewWriter(writer)
 	defer gw.Close()
 
@@ -145,6 +153,10 @@ func GenerateReleaseArchive(writer io.Writer, jobs []string) error {
 
 	releaseManifestJobs := []ReleaseManifestJob{}
 
+	jobsDirHeader := GenerateTarHeader("./jobs/", 0, true)
+
+	tw.WriteHeader(jobsDirHeader)
+
 	for _, job := range jobs {
 		jobBuffer := new(bytes.Buffer)
 		fingerprint, err := GenerateJobArchive(jobBuffer, job)
@@ -152,10 +164,7 @@ func GenerateReleaseArchive(writer io.Writer, jobs []string) error {
 			return err
 		}
 
-		jobHeader := new(tar.Header)
-		jobHeader.Name = fmt.Sprintf("./jobs/%s.tgz", job)
-		jobHeader.Mode = 100644
-		jobHeader.Size = int64(jobBuffer.Len())
+		jobHeader := GenerateTarHeader(fmt.Sprintf("./jobs/%s.tgz", job), jobBuffer.Len(), false)
 
 		tw.WriteHeader(jobHeader)
 		tw.Write(jobBuffer.Bytes())
@@ -171,13 +180,15 @@ func GenerateReleaseArchive(writer io.Writer, jobs []string) error {
 	}
 
 	releaseManifestBuffer := new(bytes.Buffer)
-	releaseManifestSize, _ := GenerateReleaseManifest(releaseManifestBuffer, ReleaseManifest{})
+	releaseManifest := ReleaseManifest{
+		Name:       name,
+		Version:    "stub-version",
+		CommitHash: "deadbeef",
+		Jobs:       releaseManifestJobs,
+	}
+	releaseManifestSize, _ := GenerateReleaseManifest(releaseManifestBuffer, releaseManifest)
 
-	releaseManifestHeader := new(tar.Header)
-	releaseManifestHeader.Name = "./release.MF"
-	releaseManifestHeader.Mode = 100644
-	releaseManifestHeader.Size = int64(releaseManifestSize)
-
+	releaseManifestHeader := GenerateTarHeader("./release.MF", releaseManifestSize, false)
 	tw.WriteHeader(releaseManifestHeader)
 	tw.Write(releaseManifestBuffer.Bytes())
 

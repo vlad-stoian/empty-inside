@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"path"
 
 	. "github.com/vlad-stoian/empty-inside/bosh"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
@@ -16,6 +17,7 @@ import (
 var (
 	verbose      = kingpin.Flag("verbose", "Verbose mode").Short('v').Bool()
 	manifestPath = kingpin.Arg("manifest-path", "Path of the manifest file").Required().String()
+	outputDir    = kingpin.Arg("output-dir", "This dir will contain all the releases").Required().String()
 )
 
 type Manifest struct {
@@ -102,11 +104,13 @@ func main() {
 
 	deployment := CreateDeployment(manifest)
 
-	firstRelease := deployment.Releases[0]
+	for _, release := range deployment.Releases {
+		var releaseArchiveBuffer bytes.Buffer
 
-	var releaseArchiveBuffer bytes.Buffer
+		GenerateReleaseArchive(&releaseArchiveBuffer, release.Name, release.Jobs)
 
-	GenerateReleaseArchive(&releaseArchiveBuffer, firstRelease.Jobs)
+		outputReleasePath := path.Join(*outputDir, fmt.Sprintf("%s.tgz", release.Name))
+		ioutil.WriteFile(outputReleasePath, releaseArchiveBuffer.Bytes(), 0777)
+	}
 
-	ioutil.WriteFile("/tmp/crazy-file.tgz", releaseArchiveBuffer.Bytes(), 0777)
 }

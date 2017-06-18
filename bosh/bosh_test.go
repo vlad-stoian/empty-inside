@@ -136,7 +136,7 @@ var _ = Describe("Bosh Tests", func() {
 		})
 
 		JustBeforeEach(func() {
-			err = GenerateReleaseArchive(buffer, jobsToBeGenerated)
+			err = GenerateReleaseArchive(buffer, "release-name", jobsToBeGenerated)
 
 			Expect(err).To(BeNil())
 
@@ -148,6 +148,21 @@ var _ = Describe("Bosh Tests", func() {
 			Expect(fileContents).To(BeNil())
 		})
 
+		Describe("./jobs/ dir", func() {
+			BeforeEach(func() {
+				fileToBeRead = "./jobs/"
+			})
+
+			It("exists", func() {
+				Expect(fileHeader).NotTo(BeNil())
+				Expect(fileContents).NotTo(BeNil())
+			})
+
+			It("is of type dir", func() {
+				Expect(fileHeader.Typeflag).To(Equal(byte(tar.TypeDir)))
+			})
+		})
+
 		Describe("./release.MF", func() {
 			BeforeEach(func() {
 				fileToBeRead = "./release.MF"
@@ -156,6 +171,23 @@ var _ = Describe("Bosh Tests", func() {
 			It("exists", func() {
 				Expect(fileHeader).NotTo(BeNil())
 				Expect(fileContents).NotTo(BeNil())
+			})
+
+			It("contains a release name", func() {
+				Expect(string(fileContents)).To(ContainSubstring("name: release-name"))
+			})
+
+			It("contains a version", func() {
+				Expect(string(fileContents)).To(ContainSubstring("version: stub-version"))
+			})
+
+			It("contains a commit_hash", func() {
+				Expect(string(fileContents)).To(ContainSubstring("commit_hash: deadbeef"))
+			})
+
+			It("contains 2 jobs", func() {
+				Expect(string(fileContents)).To(ContainSubstring("name: random-job"))
+				Expect(string(fileContents)).To(ContainSubstring("name: other-random-job"))
 			})
 		})
 
@@ -219,10 +251,10 @@ var _ = Describe("Bosh Tests", func() {
 			})
 
 			It("has the correct permissions", func() {
-				Expect(fileHeader.Mode).To(Equal(int64(100644)))
-				Expect(fileHeader.Typeflag).To(Equal(byte(0)))
-				// Expect(fileHeader.Uname).To(Equal("root"))
-				// Expect(fileHeader.Gname).To(Equal("root"))
+				Expect(fileHeader.Mode).To(Equal(int64(0644)))
+				Expect(fileHeader.Typeflag).To(Equal(byte(tar.TypeReg)))
+				Expect(fileHeader.Uname).To(Equal("root"))
+				Expect(fileHeader.Gname).To(Equal("root"))
 			})
 
 			It("is not empty", func() {
@@ -242,10 +274,10 @@ var _ = Describe("Bosh Tests", func() {
 			})
 
 			It("has the correct permissions", func() {
-				Expect(fileHeader.Mode).To(Equal(int64(100644)))
-				Expect(fileHeader.Typeflag).To(Equal(byte(0)))
-				// Expect(fileHeader.Uname).To(Equal("root"))
-				// Expect(fileHeader.Gname).To(Equal("root"))
+				Expect(fileHeader.Mode).To(Equal(int64(0644)))
+				Expect(fileHeader.Typeflag).To(Equal(byte(tar.TypeReg)))
+				Expect(fileHeader.Uname).To(Equal("root"))
+				Expect(fileHeader.Gname).To(Equal("root"))
 			})
 
 			It("is empty", func() {
