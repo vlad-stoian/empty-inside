@@ -16,28 +16,37 @@ var (
 	manifestPath = kingpin.Arg("manifest-path", "Path of the manifest file").Required().String()
 )
 
+type Manifest struct {
+	InstanceGroups []InstanceGroup `yaml:"instance_groups"`
+}
+
+type InstanceGroup struct {
+	Name string `yaml:"name"`
+	Jobs []Job  `yaml:"jobs"`
+}
+
 type Job struct {
 	Name    string `yaml:"name"`
 	Release string `yaml:"release"`
 }
 
+type Deployment struct {
+	Releases []*Release
+}
+
 type Release struct {
 	Name string
-	Jobs []Job
+	Jobs []string
 }
 
 func (r *Release) AddJob(newJobName string) {
 	for _, job := range r.Jobs {
-		if job.Name == newJobName {
+		if job == newJobName {
 			return
 		}
 	}
 
-	r.Jobs = append(r.Jobs, Job{Name: newJobName})
-}
-
-type Deployment struct {
-	Releases []*Release
+	r.Jobs = append(r.Jobs, newJobName)
 }
 
 func (d *Deployment) GetOrCreateRelease(newReleaseName string) *Release {
@@ -51,15 +60,6 @@ func (d *Deployment) GetOrCreateRelease(newReleaseName string) *Release {
 	d.Releases = append(d.Releases, newRelease)
 
 	return newRelease
-}
-
-type InstanceGroup struct {
-	Name string `yaml:"name"`
-	Jobs []Job  `yaml:"jobs"`
-}
-
-type Manifest struct {
-	InstanceGroups []InstanceGroup `yaml:"instance_groups"`
 }
 
 func CreateManifest(manifestBytes []byte) Manifest {
@@ -98,15 +98,11 @@ func main() {
 
 	manifest := CreateManifest(manifestBytes)
 
-	deployment := CreateDeployment(manifest)
+	_ = CreateDeployment(manifest)
 
-	for _, release := range deployment.Releases {
-		fmt.Printf("%s -> [", release.Name)
-		for _, job := range release.Jobs {
-			fmt.Printf("%s ", job.Name)
-		}
-		fmt.Printf("]\n")
-	}
+	// firstRelease := deployment.Releases[0]
+
+	// GenerateReleaseArchive()
 
 	// ioutil.WriteFile("/tmp/crazy-file.tgz", archiveBytes, 0777)
 }
