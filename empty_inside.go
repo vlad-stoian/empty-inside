@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
 
+	. "github.com/vlad-stoian/empty-inside/bosh"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -98,11 +100,13 @@ func main() {
 
 	manifest := CreateManifest(manifestBytes)
 
-	_ = CreateDeployment(manifest)
+	deployment := CreateDeployment(manifest)
 
-	// firstRelease := deployment.Releases[0]
+	firstRelease := deployment.Releases[0]
 
-	// GenerateReleaseArchive()
+	var releaseArchiveBuffer bytes.Buffer
 
-	// ioutil.WriteFile("/tmp/crazy-file.tgz", archiveBytes, 0777)
+	GenerateReleaseArchive(&releaseArchiveBuffer, firstRelease.Jobs)
+
+	ioutil.WriteFile("/tmp/crazy-file.tgz", releaseArchiveBuffer.Bytes(), 0777)
 }

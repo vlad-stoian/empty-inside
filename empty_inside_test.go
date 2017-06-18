@@ -76,6 +76,10 @@ var _ = Describe("Empty Inside CLI", func() {
 								Name:    "job-2",
 								Release: "release-1",
 							},
+							Job{
+								Name:    "job-3",
+								Release: "release-1",
+							},
 						},
 					},
 					InstanceGroup{
