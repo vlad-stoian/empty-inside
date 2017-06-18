@@ -13,16 +13,19 @@ import (
 )
 
 var _ = Describe("Bosh Tests", func() {
-	var err error
-	var buffer *bytes.Buffer
 
-	BeforeEach(func() {
-		buffer = new(bytes.Buffer)
-	})
 	Describe("Generate Release Manifest", func() {})
 	Describe("Generate Job Manifest", func() {
-		var fingerprint string
-		var bytesWritten int
+		var (
+			fingerprint  string
+			bytesWritten int
+			err          error
+			buffer       *bytes.Buffer
+		)
+
+		BeforeEach(func() {
+			buffer = new(bytes.Buffer)
+		})
 
 		JustBeforeEach(func() {
 			bytesWritten, fingerprint, err = GenerateJobManifest(buffer, "random-job-name")
@@ -53,8 +56,16 @@ var _ = Describe("Bosh Tests", func() {
 	})
 
 	Describe("Generate Monit File", func() {
-		var fingerprint string
-		var bytesWritten int
+		var (
+			fingerprint  string
+			bytesWritten int
+			err          error
+			buffer       *bytes.Buffer
+		)
+
+		BeforeEach(func() {
+			buffer = new(bytes.Buffer)
+		})
 
 		JustBeforeEach(func() {
 			bytesWritten, fingerprint, err = GenerateMonitFile(buffer)
@@ -76,13 +87,23 @@ var _ = Describe("Bosh Tests", func() {
 	})
 
 	Describe("Generate Job Archive", func() {
-		var fileHeader *tar.Header
-		var fileContents []byte
-		var fileToBeRead string
-		var fingerprint string
+		var (
+			fileHeader   *tar.Header
+			fileContents []byte
+			fileToBeRead string
+			fingerprint  string
+			err          error
+			buffer       *bytes.Buffer
+		)
+
+		BeforeEach(func() {
+			buffer = new(bytes.Buffer)
+		})
 
 		JustBeforeEach(func() {
 			fingerprint, err = GenerateJobArchive(buffer, "random-job-name")
+
+			Expect(err).To(BeNil())
 
 			fileHeader, fileContents = ReadFileFromArchive(fileToBeRead, buffer)
 		})

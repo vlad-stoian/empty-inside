@@ -14,7 +14,7 @@ install:
 - dep ensure
 
 script:
-- ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2
+- ginkgo -r --failOnPending --cover --trace --race --compilers=2
 
 after_success:
 - gover . coverage.txt
