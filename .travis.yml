@@ -8,10 +8,16 @@ go:
 before_install:
 - go get -u github.com/golang/dep/cmd/dep
 - go get -u github.com/onsi/ginkgo/ginkgo
+- go get -u github.com/modocache/gover
 
 install:
 - dep ensure
 
 script:
-- ginkgo -r .
+- ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2
 
+after_success:
+- gover . coverage.txt
+- ls -al
+- cat coverage.txt
+- bash <(curl -s https://codecov.io/bash)
