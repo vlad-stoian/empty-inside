@@ -116,6 +116,22 @@ func GenerateJobArchive(writer io.Writer, name string) (string, error) {
 	return sha1sum, nil
 }
 
-func GenerateReleaseManifest() error {
-	return nil
+func GenerateReleaseManifest(writer io.Writer, releaseManifest ReleaseManifest) (int, error) {
+	releaseManifestBytes, err := yaml.Marshal(releaseManifest)
+	if err != nil {
+		return -1, err
+	}
+
+	releaseManifestBytes = append([]byte("---\n"), releaseManifestBytes...)
+
+	bytesWritten, err := writer.Write(releaseManifestBytes)
+	if err != nil {
+		return -1, err
+	}
+
+	if bytesWritten != len(releaseManifestBytes) {
+		return -1, fmt.Errorf("")
+	}
+
+	return bytesWritten, nil
 }

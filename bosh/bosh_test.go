@@ -14,7 +14,40 @@ import (
 
 var _ = Describe("Bosh Tests", func() {
 
-	Describe("Generate Release Manifest", func() {})
+	Describe("Generate Release Manifest", func() {
+		var (
+			buffer            *bytes.Buffer
+			releaseToGenerate ReleaseManifest
+			bytesWritten      int
+			err               error
+		)
+
+		BeforeEach(func() {
+			releaseToGenerate = ReleaseManifest{
+				Name: "random-release",
+			}
+
+			buffer = new(bytes.Buffer)
+		})
+
+		JustBeforeEach(func() {
+			bytesWritten, err = GenerateReleaseManifest(buffer, releaseToGenerate)
+			Expect(err).To(BeNil())
+		})
+
+		It("should contain yaml ---", func() {
+			Expect(buffer.String()).To(ContainSubstring("---"))
+		})
+
+		It("should contain release name", func() {
+			Expect(buffer.String()).To(ContainSubstring("name: random-release"))
+		})
+
+		It("should have size != -1", func() {
+			Expect(bytesWritten).NotTo(Equal(-1))
+		})
+	})
+
 	Describe("Generate Job Manifest", func() {
 		var (
 			fingerprint  string
