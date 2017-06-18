@@ -20,4 +20,4 @@ after_success:
 - gover . coverage.txt
 - ls -al
 - cat coverage.txt
-- bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash) -c -F unittests
